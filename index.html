@@ -187,9 +187,11 @@
 
       deepAR.downloadFaceTrackingModel('lib/models-68-extreme.bin');
 
+      // Store video objects for cleanup
+      var videoObjects = {};
 
       function startExternalVideo() {
-
+        cleanupVideoObjects();
         // create video element
         var video = document.createElement('video');
         video.muted = true;
@@ -209,25 +211,42 @@
         videoContainer.style.left = '0px';
         videoContainer.style['z-index'] = '-1';
         document.body.appendChild(videoContainer);
-
+  
+        videoObjects.videoContainer = videoContainer;
+        videoObjects.video = video;
+          
         navigator.mediaDevices.getUserMedia({video: true}).then(function(stream) {
           try {
             video.srcObject = stream;
           } catch (error) {
             video.src = URL.createObjectURL(stream);
           }
-
           setTimeout(function() {
             video.play();
           }, 50);
         }).catch(function(error) {
-
+            console.log('error in video play:', error);
         });
 
         // tell the DeepAR SDK about our new video element
         deepAR.setVideoElement(video, true);
+          
+        var loaderWrapper = document.getElementById('loader-wrapper');
+        loaderWrapper.style.display = 'none';
       }
 
+      function cleanupVideoObjects() {
+        if (videoObjects.length > 0){  
+            videoObjects.videoContainer.parentNode.removeChild(videoObjects.videoContainer);
+            videoObjects.videoContainer = null;
+            if (videoObjects.video.srcObject) {
+              //getUserMedia starts a stream, all tracks on all streams need to be stoppedbefore calling getUserMedia again
+              videoObjects.video.srcObject.getTracks().forEach(track => track.stop())
+            }
+            videoObjects.video.pause();
+            videoObjects = {};
+        }
+      }
 
       // Position the carousel to cover the canvas
       if (window.innerWidth > window.innerHeight) {
